@@ -44,6 +44,12 @@ func backdrop(class string, onClick func()) hx.INode {
 // footer are built each time it opens (footer may be nil). onClose runs when the
 // user clicks the background or the close button. Mods: Sm, Lg, Xl, and
 // Mod("fullscreen"). For one in the middle of the screen use ModalCentered.
+// Scrollable makes the body of a modal scroll, and Fullscreen makes it fill the screen.
+const (
+	Scrollable Mod = "scrollable"
+	Fullscreen Mod = "fullscreen"
+)
+
 func Modal(open hx.Gettable[bool], title string, onClose func(), body, footer func() hx.INode, mods ...Mod) hx.INode {
 	return modal(open, title, onClose, body, footer, false, mods)
 }
@@ -65,7 +71,17 @@ func modal(open hx.Gettable[bool], title string, onClose func(), body, footer fu
 			parts = append(parts, hx.Div().Class("modal-footer").Body(build(footer)))
 		}
 		content := hx.Div().Class("modal-content").BodyList(parts)
-		dialog := with(hx.Div().Class("modal-dialog").Body(content), "modal", mods)
+		dialog := hx.Div().Class("modal-dialog").Body(content)
+		for _, m := range mods {
+			switch m {
+			case Scrollable:
+				dialog.Class("modal-dialog-scrollable")
+			case Fullscreen:
+				dialog.Class("modal-fullscreen")
+			default:
+				dialog.Class("modal-" + string(m))
+			}
+		}
 		dialog.ClassIf("modal-dialog-centered", centered)
 		// The dialog and the content are above the background, so a click on
 		// the shadow reaches it: the .modal does not take the pointer.
@@ -94,19 +110,52 @@ func Offcanvas(open hx.Gettable[bool], side, title string, onClose func(), body 
 // toggles it; items go in the menu (DropdownItem, DropdownDivider). A click
 // outside closes it. Choosing an item does not close it: do open.Set(false) in
 // the handler of the item. Mods: the colors and sizes of the button.
-func Dropdown(open *hx.SignalT[bool], label string, items []hx.INode, mods ...Mod) hx.INode {
-	toggle := hx.Button().Type("button").Class("btn", "dropdown-toggle").Attribute("aria-haspopup", "true").Text(label)
-	if len(mods) == 0 {
-		toggle.Class("btn-secondary")
-	} else {
-		with(toggle, "btn", mods)
+// Where a dropdown opens and where its menu is aligned. They go in the mods of
+// Dropdown, NavDropdown and SplitDropdown; any other mod is the variant of the button.
+const (
+	Dropup    Mod = "dropup"
+	Dropend   Mod = "dropend"
+	Dropstart Mod = "dropstart"
+	MenuEnd   Mod = "menu-end"
+)
+
+func dropMods(mods []Mod) (button []Mod, root string, menuEnd bool) {
+	root = "dropdown"
+	for _, m := range mods {
+		switch m {
+		case Dropup, Dropend, Dropstart:
+			root = string(m)
+		case MenuEnd:
+			menuEnd = true
+		default:
+			button = append(button, m)
+		}
 	}
+	return
+}
+
+func styleButton(b hx.INode, mods []Mod) {
+	if len(mods) == 0 {
+		b.Class("btn-secondary")
+	} else {
+		with(b, "btn", mods)
+	}
+}
+
+func wireToggle(toggle hx.INode, open *hx.SignalT[bool]) {
 	toggle.OnClick(func(hx.EventContext) { open.Set(!open.Get()) })
 	toggle.Effect(func() { toggle.Attribute("aria-expanded", strconv.FormatBool(open.Get())) })
-	menu := hx.Ul().Class("dropdown-menu").Body(items...)
+}
+
+// dropdownMenu is the menu and the invisible layer that closes it.
+func dropdownMenu(open *hx.SignalT[bool], items []hx.INode, menuEnd bool) (away, menu hx.INode) {
+	// Bootstrap places the menu (top, left/right, dropup, dropend, menu-end) only when
+	// it has data-bs-popper; its JavaScript sets it, and "static" is the value it uses
+	// when there is no Popper.
+	menu = hx.Ul().Class("dropdown-menu").Attribute("data-bs-popper", "static").Body(items...)
+	menu.ClassIf("dropdown-menu-end", menuEnd)
 	BindClass(menu, "show", open)
-	// An invisible layer under the menu catches the click that closes it.
-	away := hx.Dynamic(func() hx.INode {
+	away = hx.Dynamic(func() hx.INode {
 		if !open.Get() {
 			return nil
 		}
@@ -115,11 +164,44 @@ func Dropdown(open *hx.SignalT[bool], label string, items []hx.INode, mods ...Mo
 			OnClick(func(hx.EventContext) { open.Set(false) })
 	})
 	menu.Style("z-index", "1000")
-	return hx.Div().Class("dropdown").Body(toggle, away, menu)
+	return
 }
 
-// DropdownItem is an item of a Dropdown; with href empty it is a button. Chain
-// "active" or "disabled" on it.
+func Dropdown(open *hx.SignalT[bool], label string, items []hx.INode, mods ...Mod) hx.INode {
+	button, root, end := dropMods(mods)
+	toggle := hx.Button().Type("button").Class("btn", "dropdown-toggle").Attribute("aria-haspopup", "true").Text(label)
+	styleButton(toggle, button)
+	wireToggle(toggle, open)
+	away, menu := dropdownMenu(open, items, end)
+	return hx.Div().Class(root).Body(toggle, away, menu)
+}
+
+// NavDropdown is a dropdown that is an item of a Nav or a NavbarNav.
+func NavDropdown(open *hx.SignalT[bool], label string, items []hx.INode, mods ...Mod) hx.INode {
+	_, root, end := dropMods(mods)
+	toggle := hx.Button().Type("button").Class("nav-link", "dropdown-toggle").Attribute("aria-haspopup", "true").Text(label)
+	wireToggle(toggle, open)
+	away, menu := dropdownMenu(open, items, end)
+	return hx.Li().Class("nav-item", root).Body(toggle, away, menu)
+}
+
+// SplitDropdown is a button with its own action and, next to it, the arrow that opens the menu.
+func SplitDropdown(open *hx.SignalT[bool], label string, onClick func(), items []hx.INode, mods ...Mod) hx.INode {
+	button, root, end := dropMods(mods)
+	main := hx.Button().Type("button").Class("btn").Text(label)
+	styleButton(main, button)
+	if onClick != nil {
+		main.OnClick(func(hx.EventContext) { onClick() })
+	}
+	toggle := hx.Button().Type("button").Class("btn", "dropdown-toggle", "dropdown-toggle-split").
+		Attribute("aria-haspopup", "true").Body(hx.Span().Class("visually-hidden").Text("Toggle Dropdown"))
+	styleButton(toggle, button)
+	wireToggle(toggle, open)
+	away, menu := dropdownMenu(open, items, end)
+	group := hx.Div().Class("btn-group").Body(main, toggle, away, menu)
+	return group.ClassIf(root, root != "dropdown")
+}
+
 func DropdownItem(label, href string, onClick func()) hx.INode {
 	var a hx.INode
 	if href != "" {

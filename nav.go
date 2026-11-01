@@ -93,6 +93,9 @@ func NavbarCollapse(open hx.Gettable[bool], children ...hx.INode) hx.INode {
 
 // NavbarNav is the list of links of a NavbarCollapse. Chain "me-auto" to push
 // what follows to the right.
+// NavbarText is plain text inside a navbar.
+func NavbarText(text string) hx.INode { return hx.Span().Class("navbar-text").Text(text) }
+
 func NavbarNav(children ...hx.INode) hx.INode { return hx.Ul().Class("navbar-nav").Body(children...) }
 
 // NavbarLink is a link of the navbar.

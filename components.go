@@ -273,3 +273,109 @@ func Placeholder(width int) hx.INode {
 func PlaceholderGlow(children ...hx.INode) hx.INode {
 	return hx.P().Class("placeholder-glow").Body(children...)
 }
+
+// AlertHeading and AlertLink are the title and the links inside an Alert.
+func AlertHeading(text string) hx.INode { return hx.H4().Class("alert-heading").Text(text) }
+func AlertLink(href, text string) hx.INode {
+	return hx.A().Href(href).Class("alert-link").Text(text)
+}
+
+// CardGroup joins cards in a row with no space between them.
+func CardGroup(children ...hx.INode) hx.INode { return hx.Div().Class("card-group").Body(children...) }
+
+// CardGrid puts each card in a column: one column on a phone, cols from md up.
+func CardGrid(cols int, cards ...hx.INode) hx.INode {
+	cells := make([]hx.INode, len(cards))
+	for i, c := range cards {
+		cells[i] = hx.Div().Class("col").Body(c)
+	}
+	return hx.Div().Class("row", "row-cols-1", "row-cols-md-"+strconv.Itoa(cols), "g-4").BodyList(cells)
+}
+
+// CardImageOverlay is the text that goes over a card image.
+func CardImageOverlay(children ...hx.INode) hx.INode {
+	return hx.Div().Class("card-img-overlay").Body(children...)
+}
+
+// CardHeaderTabs is a CardHeader with tabs (or bs.Pills) in it.
+func CardHeaderTabs(active *hx.SignalT[string], tabs []Tab, mods ...Mod) hx.INode {
+	class := "card-header-tabs"
+	for _, m := range mods {
+		if m == Pills {
+			class = "card-header-pills"
+		}
+	}
+	return CardHeader(Tabs(active, tabs, mods...).Class(class))
+}
+
+// WithBadge puts a counter badge on the corner of a node (a button, an icon).
+// Without a variant the badge is danger.
+func WithBadge(target hx.INode, text string, mods ...Mod) hx.INode {
+	badge := hx.Span().Class("position-absolute", "top-0", "start-100", "translate-middle", "badge", "rounded-pill").Text(text)
+	if len(mods) == 0 {
+		badge.Class("text-bg-danger")
+	} else {
+		with(badge, "text-bg", mods)
+	}
+	return hx.Span().Class("position-relative", "d-inline-block").Body(target, badge)
+}
+
+// LoadingButton is a Button that shows a spinner and is disabled while loading is true.
+func LoadingButton(label string, loading hx.Gettable[bool], mods ...Mod) hx.INode {
+	b := hx.Button().Type("button").Class("btn")
+	if len(mods) == 0 {
+		b.Class("btn-primary")
+	} else {
+		with(b, "btn", mods)
+	}
+	b.Body(
+		hx.Dynamic(func() hx.INode {
+			if !loading.Get() {
+				return nil
+			}
+			return hx.Span().Class("spinner-border", "spinner-border-sm", "me-2").
+				Attribute("role", "status").Attribute("aria-hidden", "true")
+		}),
+		hx.Span().Text(label))
+	return b.Effect(func() {
+		if loading.Get() {
+			b.Attribute("disabled", "")
+		} else {
+			b.RemoveAttribute("disabled")
+		}
+	})
+}
+
+// ProgressStacked puts several ProgressSegment in one bar.
+func ProgressStacked(segments ...hx.INode) hx.INode {
+	return hx.Div().Class("progress-stacked").Body(segments...)
+}
+
+// ProgressSegment is a part of a ProgressStacked: value out of max of the whole bar.
+func ProgressSegment(value, max int, mods ...Mod) hx.INode {
+	return segmentBox(progressBar(mods), value, max)
+}
+
+// ProgressSegmentOf is ProgressSegment that follows a signal.
+func ProgressSegmentOf(value hx.Gettable[int], max int, mods ...Mod) hx.INode {
+	box := segmentBox(progressBar(mods), 0, max)
+	return box.Effect(func() {
+		v := value.Get()
+		box.Style("width", strconv.Itoa(percent(v, max))+"%")
+		box.Attribute("aria-valuenow", strconv.Itoa(v))
+	})
+}
+
+func percent(value, max int) int {
+	if max <= 0 {
+		return 0
+	}
+	return value * 100 / max
+}
+
+func segmentBox(bar hx.INode, value, max int) hx.INode {
+	return hx.Div().Class("progress").Attribute("role", "progressbar").
+		Attribute("aria-valuenow", strconv.Itoa(value)).Attribute("aria-valuemin", "0").
+		Attribute("aria-valuemax", strconv.Itoa(max)).
+		Style("width", strconv.Itoa(percent(value, max))+"%").Body(bar)
+}

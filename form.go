@@ -148,3 +148,114 @@ func InputGroup(children ...hx.INode) hx.INode {
 func InputGroupText(children ...hx.INode) hx.INode {
 	return hx.Span().Class("input-group-text").Body(children...)
 }
+
+// ButtonCheck is a checkbox that looks like a button (btn-check and a label.btn).
+// Without a variant it is btn-outline-primary.
+func ButtonCheck(id, label string, value *hx.SignalT[bool], mods ...Mod) hx.INode {
+	in := hx.Input().Type("checkbox").Id(id).Class("btn-check").Attribute("autocomplete", "off").
+		BindChecked(value).BindOnChecked(value)
+	return hx.Noop().Body(in, buttonLabel(id, label, mods))
+}
+
+// ButtonRadios is a group of radios that look like buttons.
+func ButtonRadios(name string, selected *hx.SignalT[string], options []Option, mods ...Mod) hx.INode {
+	nodes := make([]hx.INode, 0, 2*len(options))
+	for _, o := range options {
+		id := name + "-" + o.Value
+		in := hx.Input().Type("radio").Id(id).Class("btn-check").Attribute("name", name).
+			Attribute("autocomplete", "off").Value(o.Value)
+		in.Effect(func() { in.Checked(selected.Get() == o.Value) })
+		in.OnChange(func(hx.EventContext) { selected.Set(o.Value) })
+		nodes = append(nodes, in, buttonLabel(id, o.Label, mods))
+	}
+	return hx.Div().Class("btn-group").Attribute("role", "group").BodyList(nodes)
+}
+
+func buttonLabel(id, label string, mods []Mod) hx.INode {
+	l := hx.Label().Class("btn").Attribute("for", id).Text(label)
+	if len(mods) == 0 {
+		return l.Class("btn-outline-primary")
+	}
+	return with(l, "btn", mods)
+}
+
+// PlainText shows a value as read-only text with the look of a form row.
+func PlainText(id string, value hx.Gettable[string]) hx.INode {
+	return hx.Input().Type("text").Id(id).Class("form-control-plaintext").
+		Attribute("readonly", "").BindValue(value)
+}
+
+// ValidFeedback is the message of a control marked with IsValid. Bootstrap shows it
+// only when it is after the control (FormField puts the invalid one there too).
+func ValidFeedback(text string) hx.INode { return hx.Div().Class("valid-feedback").Text(text) }
+
+// IsValid marks the control with is-valid while on is true.
+func IsValid(control hx.INode, on hx.Gettable[bool]) hx.INode {
+	return BindClass(control, "is-valid", on)
+}
+
+// Fieldset groups controls under a legend.
+func Fieldset(legend string, children ...hx.INode) hx.INode {
+	if legend != "" {
+		children = append([]hx.INode{hx.Legend().Class("col-form-label", "pt-0").Text(legend)}, children...)
+	}
+	return hx.Fieldset().Body(children...)
+}
+
+// CheckInline is a Checkbox that shares its line with the next one.
+func CheckInline(id, label string, value *hx.SignalT[bool]) hx.INode {
+	return Checkbox(id, label, value).Class("form-check-inline")
+}
+
+// RadiosInline is Radios in one line.
+func RadiosInline(name string, selected *hx.SignalT[string], options []Option) hx.INode {
+	nodes := make([]hx.INode, len(options))
+	for i, o := range options {
+		nodes[i] = Radio(name, o.Value, o.Label, selected).Class("form-check-inline")
+	}
+	return hx.Div().Body(nodes...)
+}
+
+// CheckItem is one checkbox of a CheckboxGroup.
+type CheckItem struct {
+	ID, Label string
+	Value     *hx.SignalT[bool]
+}
+
+// CheckboxGroup is a Fieldset of checkboxes.
+func CheckboxGroup(legend string, items ...CheckItem) hx.INode {
+	nodes := make([]hx.INode, len(items))
+	for i, it := range items {
+		nodes[i] = Checkbox(it.ID, it.Label, it.Value)
+	}
+	return Fieldset(legend, nodes...)
+}
+
+// ColorInput is <input type=color>, bound to a "#rrggbb" text.
+func ColorInput(id string, value *hx.SignalT[string]) hx.INode {
+	return hx.Input().Type("color").Id(id).Class("form-control", "form-control-color").
+		BindValue(value).BindOnInput(value)
+}
+
+// Datalist is the list of suggestions of an Input: input.Attribute("list", id).
+func Datalist(id string, values ...string) hx.INode {
+	opts := make([]hx.INode, len(values))
+	for i, v := range values {
+		opts[i] = hx.Option().Value(v)
+	}
+	return hx.Datalist().Id(id).BodyList(opts)
+}
+
+// InputGroupSize is an InputGroup of a size (bs.Sm, bs.Lg).
+func InputGroupSize(size Mod, children ...hx.INode) hx.INode {
+	return InputGroup(children...).Class("input-group-" + string(size))
+}
+
+// InputGroupCheck is a checkbox inside an input group.
+func InputGroupCheck(label string, value *hx.SignalT[bool]) hx.INode {
+	return InputGroupText(hx.Input().Type("checkbox").Class("form-check-input", "mt-0").
+		Attribute("aria-label", label).BindChecked(value).BindOnChecked(value))
+}
+
+// FormRow is a Row with gutters, for a form of several columns.
+func FormRow(children ...hx.INode) hx.INode { return Row(children...).Class(Gutter(3)) }

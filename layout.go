@@ -109,3 +109,111 @@ func SimpleTable(mods []Mod, headers []string, rows ...hx.INode) hx.INode {
 func TableResponsive(table hx.INode) hx.INode {
 	return hx.Div().Class("table-responsive").Body(table)
 }
+
+// Align is a value of the flexbox utilities (justify-content-*, align-items-*).
+type Align string
+
+const (
+	AlignStart    Align = "start"
+	AlignEnd      Align = "end"
+	AlignCenter   Align = "center"
+	AlignBetween  Align = "between"
+	AlignAround   Align = "around"
+	AlignEvenly   Align = "evenly"
+	AlignStretch  Align = "stretch"
+	AlignBaseline Align = "baseline"
+)
+
+// FixedTop, FixedBottom and StickyTop are the position utilities of a navbar:
+// nav.Class(bs.FixedTop).
+const (
+	FixedTop    = "fixed-top"
+	FixedBottom = "fixed-bottom"
+	StickyTop   = "sticky-top"
+	FlexWrap    = "flex-wrap"
+)
+
+// JustifyContent is the class justify-content-*: nav.Class(bs.JustifyContent(bs.AlignBetween)).
+func JustifyContent(a Align) string { return "justify-content-" + string(a) }
+
+// AlignItems is the class align-items-*.
+func AlignItems(a Align) string { return "align-items-" + string(a) }
+
+// Gutter, GutterX and GutterY are the gutters of a Row: row.Class(bs.Gutter(3)).
+func Gutter(n int) string  { return "g-" + strconv.Itoa(n) }
+func GutterX(n int) string { return "gx-" + strconv.Itoa(n) }
+func GutterY(n int) string { return "gy-" + strconv.Itoa(n) }
+
+// ContainerOn is a container that is 100% wide until the breakpoint (container-md).
+func ContainerOn(breakpoint string, children ...hx.INode) hx.INode {
+	return hx.Div().Class("container-" + breakpoint).Body(children...)
+}
+
+// Flex is d-flex. Add the rest with classes: .Class(bs.Gap(2), bs.AlignItems(bs.AlignCenter), bs.FlexWrap).
+func Flex(children ...hx.INode) hx.INode { return hx.Div().Class("d-flex").Body(children...) }
+
+// FlexColumn is d-flex flex-column.
+func FlexColumn(children ...hx.INode) hx.INode {
+	return hx.Div().Class("d-flex", "flex-column").Body(children...)
+}
+
+// Center puts its children in the middle, in both directions.
+func Center(children ...hx.INode) hx.INode {
+	return Flex(children...).Class(JustifyContent(AlignCenter), AlignItems(AlignCenter))
+}
+
+// Spacer takes the free space of a flex container, pushing what follows it to the end.
+func Spacer() hx.INode { return hx.Div().Class("flex-grow-1") }
+
+// Stack is a vertical stack with a gap (vstack gap-N); Inline is the horizontal one.
+func Stack(gap int, children ...hx.INode) hx.INode  { return VStack(children...).Class(Gap(gap)) }
+func Inline(gap int, children ...hx.INode) hx.INode { return HStack(children...).Class(Gap(gap)) }
+
+// Grid is a CSS grid of cols equal columns (d-grid with grid-template-columns, which
+// the Bootstrap CSS does not have as a utility).
+func Grid(cols, gap int, children ...hx.INode) hx.INode {
+	return hx.Div().Class("d-grid", Gap(gap)).
+		Style("grid-template-columns", "repeat("+strconv.Itoa(cols)+", 1fr)").Body(children...)
+}
+
+// Blockquote is a quotation with its source (figure, blockquote and figcaption).
+func Blockquote(quote, source string) hx.INode {
+	quoted := hx.Blockquote().Class("blockquote").Body(hx.P().Text(quote))
+	if source == "" {
+		return hx.Figure().Body(quoted)
+	}
+	return hx.Figure().Body(quoted, hx.Figcaption().Class("blockquote-footer").Text(source))
+}
+
+func items(class, itemClass string, nodes []hx.INode) hx.INode {
+	lis := make([]hx.INode, len(nodes))
+	for i, n := range nodes {
+		li := hx.Li().Body(n)
+		if itemClass != "" {
+			li.Class(itemClass)
+		}
+		lis[i] = li
+	}
+	return hx.Ul().Class(class).BodyList(lis)
+}
+
+// ListUnstyled is a list with no bullets; each child goes in its own <li>.
+func ListUnstyled(children ...hx.INode) hx.INode { return items("list-unstyled", "", children) }
+
+// ListInline is a list in one line; each child goes in its own <li>.
+func ListInline(children ...hx.INode) hx.INode {
+	return items("list-inline", "list-inline-item", children)
+}
+
+// StretchedLink is a link whose click area is the whole positioned ancestor (a card).
+func StretchedLink(href, label string) hx.INode {
+	return hx.A().Href(href).Class("stretched-link").Text(label)
+}
+
+// TableRow is a <tr> with a variant (table-primary, table-active...).
+func TableRow(mods []Mod, children ...hx.INode) hx.INode {
+	return with(hx.Tr().Body(children...), "table", mods)
+}
+
+// TableCaption is the <caption> of a table.
+func TableCaption(text string) hx.INode { return hx.Caption().Text(text) }
