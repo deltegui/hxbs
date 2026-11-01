@@ -40,49 +40,59 @@ func backdrop(class string, onClick func()) hx.INode {
 	return b
 }
 
-// Modal is a dialog over the page, with a background that closes it. body and
-// footer are built each time it opens (footer may be nil). onClose runs when the
-// user clicks the background or the close button. Mods: Sm, Lg, Xl, and
-// Mod("fullscreen"). For one in the middle of the screen use ModalCentered.
-// Scrollable makes the body of a modal scroll, and Fullscreen makes it fill the screen.
-const (
-	Scrollable Mod = "scrollable"
-	Fullscreen Mod = "fullscreen"
-)
-
-func Modal(open hx.Gettable[bool], title string, onClose func(), body, footer func() hx.INode, mods ...Mod) hx.INode {
-	return modal(open, title, onClose, body, footer, false, mods)
+// closer is the function that closes something: onClose, or, when it is nil and
+// open is a signal, a function that sets it to false.
+func closer(open hx.Gettable[bool], onClose func()) func() {
+	if onClose != nil {
+		return onClose
+	}
+	if s, ok := open.(hx.Settable[bool]); ok {
+		return func() { s.Set(false) }
+	}
+	return nil
 }
 
-// ModalCentered is a Modal in the middle of the screen, not near the top.
-func ModalCentered(open hx.Gettable[bool], title string, onClose func(), body, footer func() hx.INode, mods ...Mod) hx.INode {
-	return modal(open, title, onClose, body, footer, true, mods)
+// ModalOptions is what a Modal needs. Only Open is required.
+type ModalOptions struct {
+	// Open says if the modal is in the tree. If it is a signal, the modal closes
+	// itself with it (see OnClose).
+	Open  hx.Gettable[bool]
+	Title string
+	// Body and Footer are built each time the modal opens. Footer may be nil.
+	Body, Footer func() hx.INode
+	// OnClose runs when the user clicks the background or the close button. By
+	// default it sets Open to false, when Open is a signal.
+	OnClose func()
+	// Size is Sm, Lg or Xl (the default is the medium one).
+	Size Mod
+	// Centered puts it in the middle of the screen, not near the top. Scrollable
+	// makes the body scroll instead of the page. Fullscreen fills the window.
+	Centered, Scrollable, Fullscreen bool
 }
 
-func modal(open hx.Gettable[bool], title string, onClose func(), body, footer func() hx.INode, centered bool, mods []Mod) hx.INode {
-	return shown(open, func() hx.INode {
+// Modal is a dialog over the page, with a background that closes it:
+//
+//	bs.Modal(bs.ModalOptions{Open: open, Title: "Edit", Body: form, Footer: buttons, Size: bs.Lg})
+func Modal(o ModalOptions) hx.INode {
+	onClose := closer(o.Open, o.OnClose)
+	return shown(o.Open, func() hx.INode {
 		parts := []hx.INode{
 			hx.Div().Class("modal-header").Body(
-				hx.H5().Class("modal-title").Text(title),
+				hx.H5().Class("modal-title").Text(o.Title),
 				CloseButton(onClose)),
-			hx.Div().Class("modal-body").Body(build(body)),
+			hx.Div().Class("modal-body").Body(build(o.Body)),
 		}
-		if footer != nil {
-			parts = append(parts, hx.Div().Class("modal-footer").Body(build(footer)))
+		if o.Footer != nil {
+			parts = append(parts, hx.Div().Class("modal-footer").Body(build(o.Footer)))
 		}
 		content := hx.Div().Class("modal-content").BodyList(parts)
 		dialog := hx.Div().Class("modal-dialog").Body(content)
-		for _, m := range mods {
-			switch m {
-			case Scrollable:
-				dialog.Class("modal-dialog-scrollable")
-			case Fullscreen:
-				dialog.Class("modal-fullscreen")
-			default:
-				dialog.Class("modal-" + string(m))
-			}
+		if o.Size != "" {
+			dialog.Class("modal-" + string(o.Size))
 		}
-		dialog.ClassIf("modal-dialog-centered", centered)
+		dialog.ClassIf("modal-dialog-centered", o.Centered)
+		dialog.ClassIf("modal-dialog-scrollable", o.Scrollable)
+		dialog.ClassIf("modal-fullscreen", o.Fullscreen)
 		// The dialog and the content are above the background, so a click on
 		// the shadow reaches it: the .modal does not take the pointer.
 		modal := hx.Div().Class("modal", "fade", "show", "d-block").
@@ -92,16 +102,37 @@ func modal(open hx.Gettable[bool], title string, onClose func(), body, footer fu
 	})
 }
 
-// Offcanvas is a panel that slides from a side. side is "start", "end", "top" or
-// "bottom". body is built each time it opens.
-func Offcanvas(open hx.Gettable[bool], side, title string, onClose func(), body func() hx.INode) hx.INode {
-	return shown(open, func() hx.INode {
+// OffcanvasOptions is what an Offcanvas needs. Only Open is required.
+type OffcanvasOptions struct {
+	// Open says if the panel is in the tree. If it is a signal, the panel closes
+	// itself with it (see OnClose).
+	Open  hx.Gettable[bool]
+	Title string
+	// Side is "start" (the default), "end", "top" or "bottom".
+	Side string
+	// Body is built each time the panel opens.
+	Body func() hx.INode
+	// OnClose runs when the user clicks the background or the close button. By
+	// default it sets Open to false, when Open is a signal.
+	OnClose func()
+}
+
+// Offcanvas is a panel that slides from a side:
+//
+//	bs.Offcanvas(bs.OffcanvasOptions{Open: open, Title: "Menu", Side: "end", Body: menu})
+func Offcanvas(o OffcanvasOptions) hx.INode {
+	onClose := closer(o.Open, o.OnClose)
+	side := o.Side
+	if side == "" {
+		side = "start"
+	}
+	return shown(o.Open, func() hx.INode {
 		panel := hx.Div().Class("offcanvas", "offcanvas-"+side, "show").
 			Attribute("tabindex", "-1").Attribute("role", "dialog").Body(
 			hx.Div().Class("offcanvas-header").Body(
-				hx.H5().Class("offcanvas-title").Text(title),
+				hx.H5().Class("offcanvas-title").Text(o.Title),
 				CloseButton(onClose)),
-			hx.Div().Class("offcanvas-body").Body(build(body)))
+			hx.Div().Class("offcanvas-body").Body(build(o.Body)))
 		return hx.Noop().Body(backdrop("offcanvas-backdrop", onClose), panel)
 	})
 }
@@ -185,19 +216,33 @@ func NavDropdown(open *hx.SignalT[bool], label string, items []hx.INode, mods ..
 	return hx.Li().Class("nav-item", root).Body(toggle, away, menu)
 }
 
+// SplitDropdownOptions is what a SplitDropdown needs.
+type SplitDropdownOptions struct {
+	// Open says if the menu is open; the arrow toggles it.
+	Open  *hx.SignalT[bool]
+	Label string
+	// OnClick is the action of the main button. It may be nil.
+	OnClick func()
+	// Items go in the menu (DropdownItem, DropdownDivider).
+	Items []hx.INode
+	// Mods are the variant of the button (bs.Danger) and where the menu opens
+	// (bs.Dropup, bs.Dropend, bs.Dropstart, bs.MenuEnd).
+	Mods []Mod
+}
+
 // SplitDropdown is a button with its own action and, next to it, the arrow that opens the menu.
-func SplitDropdown(open *hx.SignalT[bool], label string, onClick func(), items []hx.INode, mods ...Mod) hx.INode {
-	button, root, end := dropMods(mods)
-	main := hx.Button().Type("button").Class("btn").Text(label)
+func SplitDropdown(o SplitDropdownOptions) hx.INode {
+	button, root, end := dropMods(o.Mods)
+	main := hx.Button().Type("button").Class("btn").Text(o.Label)
 	styleButton(main, button)
-	if onClick != nil {
-		main.OnClick(func(hx.EventContext) { onClick() })
+	if o.OnClick != nil {
+		main.OnClick(func(hx.EventContext) { o.OnClick() })
 	}
 	toggle := hx.Button().Type("button").Class("btn", "dropdown-toggle", "dropdown-toggle-split").
 		Attribute("aria-haspopup", "true").Body(hx.Span().Class("visually-hidden").Text("Toggle Dropdown"))
 	styleButton(toggle, button)
-	wireToggle(toggle, open)
-	away, menu := dropdownMenu(open, items, end)
+	wireToggle(toggle, o.Open)
+	away, menu := dropdownMenu(o.Open, o.Items, end)
 	group := hx.Div().Class("btn-group").Body(main, toggle, away, menu)
 	return group.ClassIf(root, root != "dropdown")
 }
@@ -261,15 +306,28 @@ func Accordion(active *hx.SignalT[string], items ...AccordionItem) hx.INode {
 	return hx.Div().Class("accordion").Body(nodes...)
 }
 
-// Toast is a short message in a corner. It is in the tree while open is true;
-// body is built each time. Put it in a ToastContainer.
-func Toast(open hx.Gettable[bool], title string, onClose func(), body func() hx.INode) hx.INode {
-	return shown(open, func() hx.INode {
+// ToastOptions is what a Toast needs. Only Open is required.
+type ToastOptions struct {
+	// Open says if the toast is in the tree. If it is a signal, the toast closes
+	// itself with it (see OnClose).
+	Open  hx.Gettable[bool]
+	Title string
+	// Body is built each time the toast shows.
+	Body func() hx.INode
+	// OnClose runs when the user clicks the close button. By default it sets Open
+	// to false, when Open is a signal.
+	OnClose func()
+}
+
+// Toast is a short message in a corner. Put it in a ToastContainer.
+func Toast(o ToastOptions) hx.INode {
+	onClose := closer(o.Open, o.OnClose)
+	return shown(o.Open, func() hx.INode {
 		return hx.Div().Class("toast", "show").Attribute("role", "alert").Attribute("aria-live", "assertive").Body(
 			hx.Div().Class("toast-header").Body(
-				hx.Strong().Class("me-auto").Text(title),
+				hx.Strong().Class("me-auto").Text(o.Title),
 				CloseButton(onClose)),
-			hx.Div().Class("toast-body").Body(build(body)))
+			hx.Div().Class("toast-body").Body(build(o.Body)))
 	})
 }
 

@@ -19,9 +19,11 @@ open := hx.Signal(false)
 bs.Container(
 	bs.Heading(1, "Hello"),
 	bs.Button("Open", bs.Primary, bs.Lg).OnClick(func(hx.EventContext) { open.Set(true) }),
-	bs.Modal(open, "Title", func() { open.Set(false) },
-		func() hx.INode { return hx.P().Text("A modal is in the tree only while it is open.") },
-		nil),
+	bs.Modal(bs.ModalOptions{
+		Open:  open,
+		Title: "Title",
+		Body:  func() hx.INode { return hx.P().Text("A modal is in the tree only while it is open.") },
+	}),
 )
 ```
 
@@ -38,7 +40,7 @@ Helpers for the common utilities: `Space("m", "t", 3)`, `Gap`, `TextColor`, `BgC
 | `layout.go` | Container(On), Row, RowCols, Col, ColSpan, ColOn, Flex, FlexColumn, Center, Spacer, Stack, Inline, Grid, HStack, VStack, Ratio, Heading, Display, Lead, Blockquote, ListUnstyled, ListInline, StretchedLink, Image, Figure, Table, SimpleTable, TableRow, TableCaption, TableResponsive |
 | `form.go` | Label, FormText, FormField, FormRow, Input, TextArea, Select, FileInput, ColorInput, Datalist, PlainText, Range, Checkbox, CheckInline, CheckboxGroup, Switch, Radio(s), RadiosInline, ButtonCheck, ButtonRadios, Fieldset, ValidFeedback, IsValid, FloatingLabel, InputGroup(Text, Size, Check) |
 | `components.go` | Button, SubmitButton, LoadingButton, ButtonLink, CloseButton, ButtonGroup, ButtonToolbar, Alert (+ AlertHeading, AlertLink), Badge, WithBadge, Breadcrumb, Card (+ parts, CardGroup, CardGrid, CardImageOverlay, CardHeaderTabs), ListGroup, Pagination, Progress(Of), ProgressStacked, ProgressSegment(Of), Spinner, Placeholder |
-| `overlay.go` | Modal, ModalCentered, Offcanvas, Dropdown, SplitDropdown, NavDropdown, Collapse, Accordion, Toast, ToastContainer |
+| `overlay.go` | Modal, Offcanvas, Dropdown, SplitDropdown, NavDropdown, Collapse, Accordion, Toast, ToastContainer |
 | `nav.go` | Tabs, TabPanel, Nav, Navbar (+ Brand, Toggler, Collapse, Nav, Link, Text), Carousel |
 
 The layout utilities are a few helpers, not a wrapper of every class. `bs.Flex(a, bs.Spacer(), b)`
@@ -49,7 +51,14 @@ columns (Bootstrap has no utility for the columns of `d-grid`).
 
 More mods: `bs.Dropup`, `bs.Dropend`, `bs.Dropstart` (where a dropdown opens) and `bs.MenuEnd`
 (its menu aligns to the right) go with the variant of the button in `Dropdown`, `SplitDropdown`
-and `NavDropdown`; `bs.Scrollable` and `bs.Fullscreen` go in a `Modal`.
+and `NavDropdown`.
+
+Components with many arguments take an options struct, so you name what you use and leave out the rest:
+`ModalOptions` (`Open`, `Title`, `Body`, `Footer`, `OnClose`, `Size`, `Centered`, `Scrollable`, `Fullscreen`),
+`OffcanvasOptions`, `ToastOptions`, `SplitDropdownOptions` and `PaginationOptions`. When `Open` (or `Page`) is a
+signal there is nothing to write for closing (or changing page): `OnClose` and `OnPage` default to setting it.
+Give them only to do something else, such as asking before closing. A `Computed` cannot be written, so with
+one you must give the handler.
 
 Form notes: `ButtonCheck` and `ButtonRadios` are inputs with `btn-check` and a `label.btn`, so they are
 `btn-outline-primary` unless you give a variant. Mark a control with `IsValid(control, signal)` and put a

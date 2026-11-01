@@ -82,11 +82,15 @@ func TestMoreComponents(t *testing.T) {
 		{"dropup end", func() hx.INode { return bs.Dropdown(off, "Menu", items, bs.Dropup, bs.MenuEnd, bs.Primary) }, []string{`class="dropup"`, `dropdown-menu-end`, `btn-primary`}, []string{`class="dropdown"`}},
 		{"dropdown default", func() hx.INode { return bs.Dropdown(off, "Menu", items) }, []string{`class="dropdown"`, `btn-secondary`, `data-bs-popper="static"`}, []string{`dropdown-menu-end`}},
 		{"nav dropdown", func() hx.INode { return bs.Nav(bs.NavDropdown(flag, "More", items)) }, []string{`<li class="dropdown nav-item">`, `dropdown-toggle nav-link`, `dropdown-menu show`, `aria-expanded="true"`}, nil},
-		{"split dropdown", func() hx.INode { return bs.SplitDropdown(off, "Action", func() {}, items, bs.Danger, bs.Dropend) }, []string{`btn-group dropend`, `btn btn-danger`, `dropdown-toggle-split`, `Toggle Dropdown`}, nil},
+		{"split dropdown", func() hx.INode {
+			return bs.SplitDropdown(bs.SplitDropdownOptions{Open: off, Label: "Action", OnClick: func() {}, Items: items, Mods: []bs.Mod{bs.Danger, bs.Dropend}})
+		}, []string{`btn-group dropend`, `btn btn-danger`, `dropdown-toggle-split`, `Toggle Dropdown`}, nil},
 		{"modal scrollable", func() hx.INode {
-			return bs.Modal(flag, "T", func() {}, node, nil, bs.Scrollable, bs.Lg)
+			return bs.Modal(bs.ModalOptions{Open: flag, Title: "T", Body: node, Scrollable: true, Size: bs.Lg})
 		}, []string{`modal-dialog-scrollable`, `modal-lg`}, nil},
-		{"modal fullscreen", func() hx.INode { return bs.ModalCentered(flag, "T", func() {}, node, nil, bs.Fullscreen) }, []string{`modal-fullscreen`, `modal-dialog-centered`}, nil},
+		{"modal fullscreen", func() hx.INode {
+			return bs.Modal(bs.ModalOptions{Open: flag, Title: "T", Body: node, Fullscreen: true, Centered: true})
+		}, []string{`modal-fullscreen`, `modal-dialog-centered`}, nil},
 		{"navbar text", func() hx.INode { return bs.Navbar("lg", bs.NavbarText("Hi")).Class(bs.FixedTop) }, []string{`navbar-text">Hi`, `fixed-top`}, nil},
 	}
 	for _, c := range cases {

@@ -43,8 +43,10 @@ func TestComponents(t *testing.T) {
 		{"list group", func() hx.INode {
 			return bs.ListGroup([]bs.Mod{bs.Flush}, bs.ListGroupItem(node(), bs.Success), bs.ListGroupAction("go", nop))
 		}, []string{`list-group list-group-flush`, `list-group-item list-group-item-success`, `list-group-item-action`}},
-		{"pagination", func() hx.INode { return bs.Pagination(hx.Signal(5), hx.Signal(10), func(int) {}) }, []string{`class="pagination"`, `active page-item`, `aria-current="page"`, `…`}},
-		{"pagination first", func() hx.INode { return bs.Pagination(hx.Signal(1), hx.Signal(1), func(int) {}, bs.Sm) }, []string{`pagination-sm`, `disabled page-item`}},
+		{"pagination", func() hx.INode { return bs.Pagination(bs.PaginationOptions{Page: hx.Signal(5), Pages: hx.Signal(10)}) }, []string{`class="pagination"`, `active page-item`, `aria-current="page"`, `…`}},
+		{"pagination first", func() hx.INode {
+			return bs.Pagination(bs.PaginationOptions{Page: hx.Signal(1), Pages: hx.Signal(1), OnPage: func(int) {}, Mods: []bs.Mod{bs.Sm}})
+		}, []string{`pagination-sm`, `disabled page-item`}},
 		{"progress", func() hx.INode { return bs.ProgressOf(num, 10, bs.Success, bs.Animated) }, []string{`role="progressbar"`, `aria-valuenow="3"`, `width:30%`, `progress-bar-animated`, `text-bg-success`}},
 		{"spinner", func() hx.INode { return hx.Div().Body(bs.Spinner(bs.Primary, bs.Sm), bs.Spinner(bs.Grow)) }, []string{`spinner-border spinner-border-sm text-primary`, `spinner-grow`, `visually-hidden`}},
 		{"placeholder", func() hx.INode { return bs.PlaceholderGlow(bs.Placeholder(6)) }, []string{`placeholder-glow`, `col-6 placeholder`}},
@@ -68,10 +70,14 @@ func TestComponents(t *testing.T) {
 		{"input group", func() hx.INode {
 			return bs.InputGroup(bs.InputGroupText(hx.Span().Text("@")), bs.Input("text", "u", text))
 		}, []string{`input-group`, `input-group-text`}},
-		{"modal open", func() hx.INode { return bs.Modal(flag, "Title", nop, node, node, bs.Lg) }, []string{`fade modal-backdrop show`, `d-block fade modal show`, `modal-dialog modal-lg`, `modal-title">Title`, `modal-body`, `modal-footer`, `btn-close`}},
-		{"modal centered", func() hx.INode { return bs.ModalCentered(flag, "T", nop, node, nil) }, []string{`modal-dialog-centered`}},
-		{"modal closed", func() hx.INode { return hx.Div().Body(bs.Modal(off, "T", nop, node, nil)) }, []string{`<div></div>`}},
-		{"offcanvas", func() hx.INode { return bs.Offcanvas(flag, "end", "Menu", nop, node) }, []string{`offcanvas-backdrop`, `offcanvas offcanvas-end show`, `offcanvas-title">Menu`, `offcanvas-body`}},
+		{"modal open", func() hx.INode {
+			return bs.Modal(bs.ModalOptions{Open: flag, Title: "Title", OnClose: nop, Body: node, Footer: node, Size: bs.Lg})
+		}, []string{`fade modal-backdrop show`, `d-block fade modal show`, `modal-dialog modal-lg`, `modal-title">Title`, `modal-body`, `modal-footer`, `btn-close`}},
+		{"modal centered", func() hx.INode { return bs.Modal(bs.ModalOptions{Open: flag, Title: "T", Body: node, Centered: true}) }, []string{`modal-dialog-centered`}},
+		{"modal closed", func() hx.INode { return hx.Div().Body(bs.Modal(bs.ModalOptions{Open: off, Title: "T", Body: node})) }, []string{`<div></div>`}},
+		{"offcanvas", func() hx.INode {
+			return bs.Offcanvas(bs.OffcanvasOptions{Open: flag, Side: "end", Title: "Menu", Body: node})
+		}, []string{`offcanvas-backdrop`, `offcanvas offcanvas-end show`, `offcanvas-title">Menu`, `offcanvas-body`}},
 		{"dropdown open", func() hx.INode {
 			return bs.Dropdown(flag, "Menu", []hx.INode{bs.DropdownHeader("H"), bs.DropdownItem("One", "/1", nil), bs.DropdownDivider()}, bs.Info)
 		}, []string{`class="dropdown"`, `btn btn-info dropdown-toggle`, `aria-expanded="true"`, `dropdown-menu show`, `dropdown-header`, `dropdown-item`, `dropdown-divider`, `position:fixed`}},
@@ -80,7 +86,9 @@ func TestComponents(t *testing.T) {
 		{"accordion", func() hx.INode {
 			return bs.Accordion(acc, bs.AccordionItem{ID: "one", Title: "One", Body: node}, bs.AccordionItem{ID: "two", Title: "Two", Body: node})
 		}, []string{`accordion-item`, `accordion-button"`, `accordion-button collapsed`, `accordion-collapse collapse show`, `accordion-body`}},
-		{"toast", func() hx.INode { return bs.ToastContainer("top-0 end-0", bs.Toast(flag, "Saved", nop, node)) }, []string{`end-0 p-3 position-fixed toast-container top-0`, `show toast`, `toast-header`, `toast-body`}},
+		{"toast", func() hx.INode {
+			return bs.ToastContainer("top-0 end-0", bs.Toast(bs.ToastOptions{Open: flag, Title: "Saved", Body: node}))
+		}, []string{`end-0 p-3 position-fixed toast-container top-0`, `show toast`, `toast-header`, `toast-body`}},
 		{"tabs", func() hx.INode {
 			return hx.Div().Body(bs.Tabs(tab, []bs.Tab{{"a", "A"}, {"b", "B"}}, bs.Pills),
 				bs.TabPanel(tab, "a", func() hx.INode { return hx.P().Text("PANEL-A") }),

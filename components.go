@@ -145,9 +145,30 @@ func ListGroupAction(label string, onClick func(), mods ...Mod) hx.INode {
 	return with(b, "list-group-item", mods)
 }
 
+// PaginationOptions is what a Pagination needs.
+type PaginationOptions struct {
+	// Page is the current page and Pages how many there are; both count from 1.
+	Page, Pages hx.Gettable[int]
+	// OnPage runs when the user chooses a page. By default it sets Page, when
+	// Page is a signal.
+	OnPage func(int)
+	// Mods: Sm, Lg.
+	Mods []Mod
+}
+
 // Pagination shows previous, next, and a window of pages around the current one
-// with the first and the last. page and pages count from 1. Mods: Sm, Lg.
-func Pagination(page, pages hx.Gettable[int], goTo func(int), mods ...Mod) hx.INode {
+// with the first and the last:
+//
+//	bs.Pagination(bs.PaginationOptions{Page: page, Pages: pages})
+func Pagination(o PaginationOptions) hx.INode {
+	page, pages, mods, goTo := o.Page, o.Pages, o.Mods, o.OnPage
+	if goTo == nil {
+		if s, ok := page.(hx.Settable[int]); ok {
+			goTo = s.Set
+		} else {
+			goTo = func(int) {}
+		}
+	}
 	item := func(label string, target int, active, disabled bool) hx.INode {
 		li := hx.Li().Class("page-item")
 		b := hx.Button().Type("button").Class("page-link").Text(label)
